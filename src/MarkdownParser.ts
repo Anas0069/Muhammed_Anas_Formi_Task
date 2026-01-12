@@ -84,10 +84,85 @@ This starter code does token streaming with no styling right now. Your job is to
 
 Note: don't be afraid of using globals for state. For this challenge, speed is preferred over cleanliness.
  */
+
+let mode: 'text' | 'inline' | 'block' = 'text';
+let activeElement: HTMLElement | null = null;
+let backtickBuffer = '';
+
+function setMode(newMode: 'text' | 'inline' | 'block') {
+    if (mode === newMode) return;
+    mode = newMode;
+    if (mode === 'text') {
+        activeElement = null;
+    } else {
+        const tag = mode === 'inline' ? 'code' : 'pre';
+        activeElement = document.createElement(tag);
+        if (mode === 'block') {
+            const code = document.createElement('code');
+            activeElement.appendChild(code);
+        }
+        
+        if (mode === 'inline') {
+            activeElement.style.backgroundColor = '#f0f0f0';
+            activeElement.style.padding = '2px 4px';
+            activeElement.style.borderRadius = '4px';
+            activeElement.style.fontFamily = 'monospace';
+        } else {
+            activeElement.style.backgroundColor = '#f0f0f0';
+            activeElement.style.padding = '10px';
+            activeElement.style.borderRadius = '4px';
+            activeElement.style.display = 'block';
+            activeElement.style.fontFamily = 'monospace';
+            activeElement.style.whiteSpace = 'pre-wrap';
+            activeElement.style.marginTop = '1em';
+            activeElement.style.marginBottom = '1em';
+        }
+        
+        currentContainer!.appendChild(activeElement);
+    }
+}
+
+function appendToCurrent(text: string) {
+    if (!text) return;
+    const container = mode === 'block' ? activeElement!.querySelector('code')! : (activeElement || currentContainer!);
+    container.appendChild(document.createTextNode(text));
+}
+
 function addToken(token: string) {
     if(!currentContainer) return;
 
-    const span = document.createElement('span');
-    span.innerText = token;
-    currentContainer.appendChild(span);
+    for (const char of token) {
+        if (char === '`') {
+            backtickBuffer += '`';
+            if (backtickBuffer === '```') {
+                if (mode === 'block') {
+                    setMode('text');
+                } else {
+                    if (mode === 'inline') {
+                        currentContainer.removeChild(activeElement!);
+                        mode = 'text';
+                    }
+                    setMode('block');
+                }
+                backtickBuffer = '';
+            }
+        } else {
+            if (backtickBuffer.length === 1) {
+                if (mode === 'block') {
+                    appendToCurrent('`');
+                } else {
+                    setMode(mode === 'inline' ? 'text' : 'inline');
+                }
+            } else if (backtickBuffer.length === 2) {
+                if (mode === 'block') {
+                    appendToCurrent('``');
+                } else {
+                    appendToCurrent('`');
+                    appendToCurrent('`');
+                }
+            }
+            backtickBuffer = '';
+            appendToCurrent(char);
+        }
+    }
 }
